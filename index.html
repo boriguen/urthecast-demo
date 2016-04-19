@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UrtheCast Demo - Satellite Imagery Layers</title>
+  <meta charset="utf-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script>
+    // Define UrtheCast credentials and attribution.
+    // Note: All apps developed are encouraged to be used internally or via a proxy.
+    // Otherwise there is a risk of exposing your API key and secret.
+    uc = {
+      key: 'D8B5C134A5A548159B8B',
+      secret: '775972D2DEDC488B9D10336EBC748740',
+      attr: 'Imagery © <a href="http://urthecast.com">UrtheCast</a>',
+    }
+
+    // Define UrtheCast tile URL with sensors Theia and Landsat 8, 
+    // Cloud coverage under a certain threshold, acquired boundaries and credentials inclusion.
+    var url = `https://tile-{s}.urthecast.com/v1/{renderer}/{z}/{x}/{y}?api_key=${uc.key}&api_secret=${uc.secret}&sensor_platform=theia,landsat-8&cloud_coverage_lte=33&acquired_gte=2014-02-18T08:00:00.000Z&acquired_lte=2016-04-19T06:59:59.999Z`;
+
+    // Create layers.
+    var common = {
+      renderer: 'rgb',
+      attribution: uc.attr,
+      maxZoom: 15
+    };
+    var rgb = L.tileLayer(url, common);
+    var ndvi = L.tileLayer(url, _.extend(common, {renderer: 'ndvi'}));
+    var evi = L.tileLayer(url, _.extend(common, {renderer: 'evi'}));
+    var ndwi = L.tileLayer(url, _.extend(common, {renderer: 'ndwi'}));
+    var fcn = L.tileLayer(url, _.extend(common, {renderer: 'false-color-nir'}));
+
+    // Initialize the map object.
+    var map = L.map('map', {
+      center: [37.75069,-122.40705],
+      zoom: 11,
+      layers: [rgb]
+    });
+
+    // Define and add the list of base layers to switch to.
+    L.control.layers({
+      'True RGB': rgb,
+      'Normalized Difference Vegetation Index': ndvi,
+      'Enhanced Vegetation Index': evi,
+      'Normalized Difference Water Index': ndwi,
+      'False-color NIR': fcn
+    }).addTo(map);
+  </script>
+</body>
+</html>
