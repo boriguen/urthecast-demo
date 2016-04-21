@@ -33,6 +33,8 @@
       </div>
       <button class="btn btn-primary" type="submit">Update tiles...</button>
     </form>
+    <h3>Show scene metadata</h3>
+    <p>Viewport bbox: <span id="span-viewport-bbox"></span><p>
   </div>
   <div id="map"></div>
 
@@ -59,9 +61,39 @@
      */
      function kickoff() {
        var refs = initMap();
+
+       // Add listener on form submit.
        $('form').submit(function(e) {
          onLayerFormSubmit(e, refs);
        });
+
+       // Add listener on map panning and zooming.
+       refs.map.on('moveend', function(e) {
+         displayViewportBbox(e.target);
+       });
+
+       // Display current bbox.
+       displayViewportBbox(refs.map);
+     }
+
+    /**
+     * Displays the map viewport bbox.
+     */
+     function displayViewportBbox(map) {
+       var bbox = map.getBounds();
+       var sw = bbox.getSouthWest();
+       var ne = bbox.getNorthEast();
+       var nw = bbox.getNorthWest();
+       var se = bbox.getSouthEast();
+
+       var polyStr = [
+         '[[', sw.lat, ',', sw.lng, '],',
+         '[', ne.lat, ',', ne.lng, '],',
+         '[', nw.lat, ',', nw.lng, '],',
+         '[', se.lat, ',', se.lng, '],',
+         '[', sw.lat, ',', sw.lng, ']]'
+       ].join('');
+       $('#span-viewport-bbox').text(polyStr);
      }
 
     /**
