@@ -7,12 +7,38 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+
+  <!-- Application style -->
   <link rel="stylesheet" href="index.css" />
+
+  <!-- Leaflet style -->
   <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
 </head>
 <body>
+  <div class="ctrl-panel">
+    <p id="description">
+      This demo shows how to interact with UrtheCast Satellite and Archive APIs on top of a Leaflet.js map. Other renderers can be used via the layer control on the top right of the demo.
+    </p>
+    <hr>
+    <h3>Choose layers</h3>
+    <form class="form-inline" id="form-location" name="form-location">
+      <div class="form-group">
+        <select id="select-layers" class="form-control" multiple>
+          <option value="theia" selected>Theia</option>
+          <option value="landsat-8" selected>Landsat 8</option>
+          <option value="deimos-1">Deimos 1</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Update tiles...</button>
+    </form>
+  </div>
   <div id="map"></div>
 
+  <!-- Load JavaScript -->
+  <script src="https://code.jquery.com/jquery-1.12.3.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
   <script src="http://underscorejs.org/underscore-min.js"></script>
   <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
   <script>
@@ -25,37 +51,101 @@
       attr: 'Imagery © <a href="http://urthecast.com">UrtheCast</a>',
     }
 
-    // Define UrtheCast tile URL with sensors Theia and Landsat 8, 
-    // Cloud coverage under a certain threshold, acquired boundaries and credentials inclusion.
-    var url = `https://tile-{s}.urthecast.com/v1/{renderer}/{z}/{x}/{y}?api_key=${uc.key}&api_secret=${uc.secret}&sensor_platform=theia,landsat-8&cloud_coverage_lte=33&acquired_gte=2014-02-18T08:00:00.000Z&acquired_lte=2016-04-19T06:59:59.999Z`;
+    // Launch.
+    kickoff();
 
-    // Create layers.
-    var common = {
-      renderer: 'rgb',
-      attribution: uc.attr,
-      maxZoom: 15
-    };
-    var rgb = L.tileLayer(url, common);
-    var ndvi = L.tileLayer(url, _.extend(common, {renderer: 'ndvi'}));
-    var evi = L.tileLayer(url, _.extend(common, {renderer: 'evi'}));
-    var ndwi = L.tileLayer(url, _.extend(common, {renderer: 'ndwi'}));
-    var fcn = L.tileLayer(url, _.extend(common, {renderer: 'false-color-nir'}));
+    /**
+     * Kicks off the app.
+     */
+     function kickoff() {
+       var refs = initMap();
+       $('form').submit(function(e) {
+         onLayerFormSubmit(e, refs);
+       });
+     }
 
-    // Initialize the map object.
-    var map = L.map('map', {
-      center: [37.75069,-122.40705],
-      zoom: 11,
-      layers: [rgb]
-    });
+    /**
+     * Initializes the map.
+     */
+    function initMap() {
+      // Create layers.
+      var common = {
+        renderer: 'rgb',
+        attribution: uc.attr,
+        maxZoom: 15
+      };
+      var url = getUrl($('select').val());
+      var rgb = L.tileLayer(url, common);
+      var ndvi = L.tileLayer(url, _.extend(common, {renderer: 'ndvi'}));
+      var evi = L.tileLayer(url, _.extend(common, {renderer: 'evi'}));
+      var ndwi = L.tileLayer(url, _.extend(common, {renderer: 'ndwi'}));
+      var fcn = L.tileLayer(url, _.extend(common, {renderer: 'false-color-nir'}));
 
-    // Define and add the list of base layers to switch to.
-    L.control.layers({
-      'True RGB': rgb,
-      'Normalized Difference Vegetation Index': ndvi,
-      'Enhanced Vegetation Index': evi,
-      'Normalized Difference Water Index': ndwi,
-      'False-color NIR': fcn
-    }).addTo(map);
+      // Initialize the map object.
+      var map = L.map('map', {
+        center: [37.75069,-122.40705],
+        zoom: 11,
+        layers: [rgb],
+        zoomControl: false
+      });
+      new L.Control.Zoom({ position: 'bottomright'}).addTo(map);
+
+      // Define and add the list of base layers to switch to.
+      var layers = {
+        'True RGB': rgb,
+        'Normalized Difference Vegetation Index': ndvi,
+        'Enhanced Vegetation Index': evi,
+        'Normalized Difference Water Index': ndwi,
+        'False-color NIR': fcn
+      };
+      L.control.layers(layers).addTo(map);
+
+      return {
+        map: map,
+        layers: layers
+      };
+    }
+
+    /**
+     * Updates map layers.
+     */
+    function updateLayers(refs, url) {
+      $.each(refs.layers, function(key, value) {
+        value.setUrl(url);
+      });
+    }
+
+    /**
+     * Gets the tile URL based on the selected layers.
+     */
+    function getUrl(layers) {
+      var layersString = layers.join(',');
+      // Define UrtheCast tile URL with sensors Theia and Landsat 8, 
+      // Cloud coverage under a certain threshold, acquired boundaries and credentials inclusion.
+      var url = `https://tile-{s}.urthecast.com/v1/{renderer}/{z}/{x}/{y}?api_key=${uc.key}&api_secret=${uc.secret}&sensor_platform=${layersString}&cloud_coverage_lte=33&acquired_gte=2014-02-18T08:00:00.000Z&acquired_lte=2016-04-19T06:59:59.999Z`;
+
+      return url;
+    }
+
+    /**
+     * Performs layer update on new selection.
+     */
+    function onLayerFormSubmit(e, map) {
+      e.preventDefault();
+
+      // Get relevant HTML elements
+      var form = e.currentTarget;
+      var select = $(form).find('select');
+
+      // Get updated URL.
+      var url = getUrl(select.val());
+
+      // Update layers.
+      updateLayers(map, url);
+
+      return false;
+    }
+
   </script>
 </body>
 </html>
